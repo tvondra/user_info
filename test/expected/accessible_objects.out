@@ -1,0 +1,18 @@
+\set ECHO 0
+-- create empty role
+CREATE ROLE foo;
+-- nothing yet owned by foo
+SELECT type, relname, rights FROM accessible_objects('foo');
+ type | relname | rights 
+------+---------+--------
+(0 rows)
+
+CREATE TABLE test_table (id INT);
+GRANT ALL ON test_table TO foo;
+SELECT type, relname, rights FROM accessible_objects('foo');
+   type   |  relname   |                          rights                           
+----------+------------+-----------------------------------------------------------
+ RELATION | test_table | {INSERT,SELECT,UPDATE,DELETE,TRUNCATE,REFERENCES,TRIGGER}
+(1 row)
+
+ROLLBACK;

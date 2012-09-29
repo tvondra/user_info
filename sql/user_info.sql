@@ -212,3 +212,93 @@ CREATE OR REPLACE FUNCTION granted_roles_pretty()
 AS $$
     SELECT * FROM granted_roles_pretty(current_user) ORDER BY PATH;
 $$ LANGUAGE SQL;
+
+-- used internally to read data from the same table
+CREATE OR REPLACE FUNCTION accessible_objects_internal(p_role_oid OID,
+                                                       p_catalog TEXT, p_name_cols TEXT[], p_acl_col TEXT,
+                                                       p_has_oids BOOLEAN)
+    RETURNS TABLE (id OID, name NAME, rights TEXT[])
+AS $$
+DECLARE
+    r record;
+    s record;
+    q text;
+    i int;
+BEGIN
+
+    q := 'SELECT ';
+
+    -- tables with / without OIDs
+    IF p_has_oids THEN
+        q := q || 'oid, ';
+    ELSE
+        q := q || 'NULL, ';
+    END IF;
+
+    -- columns used to identify the object (kind of name)
+    FOR i IN 1 .. array_length(p_name_cols,1) LOOP
+        p_name_cols[i] := quote_ident(p_name_cols[i]);
+    END LOOP;
+
+    -- rest of the query
+    q := q || '(' || array_to_string(p_name_cols, ' || ''.'' || ') || ') AS objname,' || quote_ident(p_acl_col) || ' AS acl FROM '
+                    || quote_ident(p_catalog) || ' c WHERE ' || quote_ident(p_acl_col) || ' IS NOT NULL';
+
+    -- loop through the objects, split the acl into privilege_type
+    FOR r IN EXECUTE q LOOP
+
+        id := r.oid;
+        name := r.objname;
+
+        SELECT array_agg(privilege_type) INTO rights
+          FROM aclexplode(r.acl) WHERE grantee = p_role_oid;
+
+        IF array_length(rights,1) > 0 THEN
+            RETURN NEXT;
+        END IF;
+
+    END LOOP;
+
+    RETURN;
+
+END;
+$$ LANGUAGE plpgsql;
+
+-- objects with explicitly granted access
+CREATE OR REPLACE FUNCTION accessible_objects(p_role_oid OID)
+    RETURNS TABLE (type TEXT, id OID, relname NAME, rights TEXT[])
+AS $$
+
+    SELECT 'ATTRIBUTE'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_attribute', ARRAY['attrelid', 'attname'], 'attacl', false)
+    UNION ALL
+    SELECT 'RELATION'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_class', ARRAY['relname'], 'relacl', true)
+    UNION ALL
+    SELECT 'DATABASE'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_database', ARRAY['datname'], 'datacl', true)
+    UNION ALL
+    SELECT 'FDW'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_foreign_data_wrapper', ARRAY['fdwname'], 'fdwacl', true)
+    UNION ALL
+    SELECT 'FDW SERVER'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_foreign_server', ARRAY['srvname'], 'srvacl', true)
+    UNION ALL
+    SELECT 'LANGUAGE'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_language', ARRAY['lanname'], 'lanacl', true)
+    UNION ALL
+    -- SELECT 'FUNCTION'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_largeobject_metadata', ... , 'lomacl', true)
+    -- UNION ALL
+    SELECT 'SCHEMA'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_namespace', ARRAY['nspname'], 'nspacl', true)
+    UNION ALL
+    SELECT 'PL TEMPLATE'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_pltemplate', ARRAY['tmplname'], 'tmplacl', false)
+    UNION ALL
+    SELECT 'FUNCTION'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_proc', ARRAY['proname'], 'proacl', true)
+    UNION ALL
+    SELECT 'TABLESPACE'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_tablespace', ARRAY['spcname'], 'spcacl', true)
+    UNION ALL
+    SELECT 'TYPE'::TEXT, * FROM accessible_objects_internal(p_role_oid, 'pg_type', ARRAY['typname'], 'typacl', true);
+    
+$$ LANGUAGE SQL;
+
+CREATE OR REPLACE FUNCTION accessible_objects(p_role_name NAME)
+    RETURNS TABLE (type TEXT, id OID, relname NAME, rights TEXT[])
+AS $$
+
+    SELECT * FROM accessible_objects((SELECT oid FROM pg_roles WHERE rolname = p_role_name));
+
+$$ LANGUAGE SQL;

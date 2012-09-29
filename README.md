@@ -71,6 +71,37 @@ a role name and you'll get a list of granted roles.
      5459 |   bar | {5458,5459} | bar
     (2 rows)
 
+The last function provides info about granted privileges for various
+objects - the current version considers only explicitly granted
+privileges (i.e. not handle default privileges) and only privileges
+granted to a particular role (i.e. not through other roles).
+
+ * **accessible\_objects**`(p_role_oid OID)`
+ * **accessible*_objects**`(p_role_name NAME)`
+
+The usage is quite simple and the output is a list (table) of objects
+with an information about granted privileges:
+
+    SELECT * FROM accessible_objects(10);
+
+       type   | id    |        relname        |      rights
+    ----------+-------+-----------------------+----------------------
+     RELATION | 11713 | foreign_servers       | {INSERT,SELECT,...}
+     RELATION | 11720 | foreign_table_options | {INSERT,SELECT,...}
+     RELATION | 11723 | foreign_tables        | {INSERT,SELECT,...}
+     RELATION | 11729 | user_mapping_options  | {INSERT,SELECT,...}
+     RELATION | 11733 | user_mappings         | {INSERT,SELECT,...}
+     RELATION | 11591 | sql_features          | {INSERT,SELECT,...}
+     DATABASE |     1 | template1             | {CREATE,TEMPORARY,...}
+     DATABASE | 12006 | template0             | {CREATE,TEMPORARY,...}
+     SCHEMA   |    11 | pg_catalog            | {USAGE,CREATE}
+     SCHEMA   |  2200 | public                | {USAGE,CREATE}
+     SCHEMA   | 11468 | information_schema    | {USAGE,CREATE}
+
+The ability to handle default privileges, privileges granted through
+other roles and ability to identify how exactly a user got a particular
+privilege is a TODO for future.
+
 
 Installation
 ------------
