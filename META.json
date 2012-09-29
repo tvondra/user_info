@@ -1,0 +1,25 @@
+{
+    "name": "user_info",
+    "abstract": "Provides user-related information (owned objects, granted roles).",
+    "description": "Provides basic info about users - what roles are granted to them (recursively), what objects they own and so on.",
+    "version": "0.1.0",
+    "maintainer": "Tomas Vondra <tv@fuzzy.cz>",
+    "license": "bsd",
+    "provides": {
+        "user_info": {
+            "abstract": "Provides user-related information (owned objects, granted roles).",
+            "file": "sql/user_info.sql",
+            "docfile": "doc/user_info.md",
+            "version": "0.1.0"
+        }
+    },
+    "release_status": "testing",
+
+    "generated_by": "The maintainer's name",
+
+
+    "meta-spec": {
+        "version": "1.0.0",
+        "url": "http://pgxn.org/meta/spec.txt"
+    }
+}

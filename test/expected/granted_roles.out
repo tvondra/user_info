@@ -1,0 +1,21 @@
+\set ECHO 0
+-- create empty role
+CREATE ROLE foo;
+-- should return one row (the role itself)
+SELECT count(*) FROM granted_roles('foo');
+ count 
+-------
+     1
+(1 row)
+
+-- create another role and grant it to foo
+CREATE ROLE bar;
+GRANT bar TO foo;
+-- should return two lines
+SELECT count(*) FROM granted_roles('foo');
+ count 
+-------
+     2
+(1 row)
+
+ROLLBACK;
