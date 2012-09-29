@@ -17,6 +17,15 @@
 
     "generated_by": "The maintainer's name",
 
+   "resources": {
+      "repository": {
+        "url":  "https://github.com/tvondra/user_info.git",
+        "web":  "http://github.com/tvondra/user_info",
+        "type": "git"
+      }
+   },
+
+   "tags" : ["administration"],
 
     "meta-spec": {
         "version": "1.0.0",
